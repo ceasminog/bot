@@ -4,6 +4,12 @@ import urllib
 import urllib.request as requests
 from bs4 import BeautifulSoup  # Для обработки HTML
 
+# constants:
+SLICE_NUM = 6
+URL = 'https://www.delivery-club.ru/srv/Siti_Pizza/#Voroncovskaja/'
+FILE = 'my_file.html'
+TOCKEN = "598435796:AAG82ExaA4becnKtGeko6g3DyWm_fYs15FE"
+
 
 # global best_offers - Рекомендации
 # global all_pizza - Весь асортимент пиццы
@@ -11,57 +17,54 @@ from bs4 import BeautifulSoup  # Для обработки HTML
 
 # gets site by url
 def get_site():
-    url = 'https://www.delivery-club.ru/srv/Siti_Pizza/#Voroncovskaja/'
-    html = urllib.request.urlopen(url).read()
+    html = urllib.request.urlopen(URL).read()
     # Теперь записываешь файл
-    f = open('my_file.html', 'wb')
-    f.write(html)
-    f.close()
+    with open(FILE, 'wb') as f:
+        f.write(html)
 
 
 # parses site
 def processing():
-    print('site received')
     get_site()
-    f = open('my_file.html', 'rb')
-    soup = BeautifulSoup(f, 'html.parser')
-    subtree = soup.script
-    subtree.extract()
-    food_list = soup.findAll('h3')
-    price_list = soup.findAll('strong')
-    for j in range(len(price_list)):
-        price_list[j] = str(price_list[j]).replace('<strong><span>', '').replace(
-            '</span> <span class="ptrouble">у</span></strong>', '').replace(
-            '<strong id="delivery-diff">', '').replace('</strong>', '')
-    pizza30_list = []
-    pizza30_price = []
-    count = 1
-    best_var = []
-    for j in range(len(food_list)):
-        food_list[j] = str(food_list[j]).replace('<h3 class="product_title"><span itemprop="name">', '').replace(
-            '</span></h3>', '')
-        if food_list[j].count('30') == 1:
-            food_list[j] = food_list[j].replace('30 см', '')
-            pizza30_list.append(str(count) + ' ' + food_list[j] + ' ' + str(price_list[j]))
-            pizza30_price.append(str(price_list[j]))
-            best_var.append(str(price_list[j]) + ' ' + food_list[j].replace('30 см', ''))
-            count += 1
-        food_list[j] = '{} - {} руб. '.format(food_list[j], str(price_list[j]))
-    global all_food
-    all_food = 'Весь асортимент:\n {}'.format('\n'.join(food_list))
-    global all_pizza
-    all_pizza = 'Весь асортимент пиццы:\n {}'.format('\n'.join(pizza30_list))
-    best_var.sort()
-    for i in range(len(best_var)):
-        a = best_var[i].split()
+    logging.info(u'site {} received'.format(URL))
+    with open(FILE, 'rb') as f:
+        soup = BeautifulSoup(f, 'html.parser')
+        subtree = soup.script
+        subtree.extract()
+        food_list = soup.findAll('h3')
+        price_list = soup.findAll('strong')
+        for j in range(len(price_list)):
+            price_list[j] = str(price_list[j]).replace('<strong><span>', '').replace(
+                '</span> <span class="ptrouble">у</span></strong>', '').replace(
+                '<strong id="delivery-diff">', '').replace('</strong>', '')
+        pizza30_list = []
+        pizza30_price = []
+        count = 1
+        best_var = []
+        for j in range(len(food_list)):
+            food_list[j] = str(food_list[j]).replace('<h3 class="product_title"><span itemprop="name">', '').replace(
+                '</span></h3>', '')
+            if food_list[j].count('30') == 1:
+                food_list[j] = food_list[j].replace('30 см', '')
+                pizza30_list.append(str(count) + ' ' + food_list[j] + ' ' + str(price_list[j]))
+                pizza30_price.append(str(price_list[j]))
+                best_var.append(str(price_list[j]) + ' ' + food_list[j].replace('30 см', ''))
+                count += 1
+            food_list[j] = '{} - {} руб. '.format(food_list[j], str(price_list[j]))
+        global all_food
+        all_food = 'Весь асортимент:\n {}'.format('\n'.join(food_list))
+        global all_pizza
+        all_pizza = 'Весь асортимент пиццы:\n {}'.format('\n'.join(pizza30_list))
+        best_var.sort()
+        for i in range(len(best_var)):
+            a = best_var[i].split()
         a.append('- ' + a[0] + ' руб.')
-        del a[0]
+        a[0] = ''
         best_var[i] = ' '.join(a)
-    best_var = best_var[0:6]
-    global best_offers
-    best_offers = 'Сегодня рекомендую:\n {}'.format('\n'.join(best_var))
-    f.close()
-    print('site parsed')
+        best_var = best_var[0:SLICE_NUM]
+        global best_offers
+        best_offers = 'Сегодня рекомендую:\n {}'.format('\n'.join(best_var))
+        logging.info(u'site {} parsed'.format(URL))
 
 
 # Enables logging
@@ -120,7 +123,7 @@ def main():
     processing()
     """Start the bot."""
     # Create the EventHandler and pass it your bot's token.
-    updater = Updater("598435796:AAG82ExaA4becnKtGeko6g3DyWm_fYs15FE")
+    updater = Updater(TOCKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -133,8 +136,7 @@ def main():
     dp.add_handler(CommandHandler("all", all))
     dp.add_handler(CommandHandler("pay", pay))
 
-    # on noncommand i.e message -  ignores  the message on Telegram
-    # on noncommand i.e message - echo the message on Telegram
+    # on noncommand i.e message -  invalid_command
     dp.add_handler(MessageHandler(Filters.text, invalid_command))
 
     # log all errors
